@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Vision Sudoku Solver</title>
-    <!-- OpenCV.js for Perspective Warp & Grid Detection -->
     <script async src="https://docs.opencv.org/4.9.0/opencv.js" onload="onOpenCvReady()"></script>
-    <!-- Tesseract.js v5 for Digit Recognition -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         :root {
@@ -32,13 +30,11 @@
         .btn-secondary { background: transparent; border: 1px solid rgba(148, 163, 184, 0.4); color: var(--text-muted); width: 100%; margin-top: 8px; }
         input[type="file"] { display: none; }
         #status { font-size: 0.84rem; color: var(--accent); margin-bottom: 12px; min-height: 20px; font-weight: 500; }
-        
-        /* Vision Preview Box */
+
         #previewBox { display: none; margin-bottom: 14px; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.4); }
         #previewBox p { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; }
-        #warpedCanvas { width: 150px; height: 150px; border-radius: 6px; border: 1px solid var(--accent); }
+        #warpedCanvas { width: 160px; height: 160px; border-radius: 6px; border: 1px solid var(--accent); }
 
-        /* Sudoku Grid */
         .sudoku-board { display: grid; grid-template-columns: repeat(9, 1fr); border: 3px solid var(--accent); border-radius: 10px; overflow: hidden; background: rgba(15, 23, 42, 0.85); aspect-ratio: 1 / 1; width: 100%; margin: 0 auto; }
         .cell { width: 100%; height: 100%; background: transparent; border: 1px solid rgba(255, 255, 255, 0.12); color: var(--text-main); text-align: center; font-size: 1.25rem; font-weight: 600; outline: none; }
         .cell:focus { background: rgba(56, 189, 248, 0.25); }
@@ -53,7 +49,7 @@
 <body>
 <div class="container">
     <h1>Vision Sudoku Solver</h1>
-    <p class="subtitle">Auto-straightens skewed photos & solves in milliseconds</p>
+    <p class="subtitle">High-accuracy perspective warp & row-strip OCR</p>
 
     <div class="upload-group">
         <label class="btn">📷 Take Photo<input type="file" id="cameraInput" accept="image/*" capture="environment"></label>
@@ -63,7 +59,7 @@
     <div id="status">⏳ Loading Computer Vision engine...</div>
 
     <div id="previewBox">
-        <p>AI Flattened Grid View (verify all 4 corners were detected):</p>
+        <p>AI Flattened Grid View (verify all 4 outer corners align):</p>
         <canvas id="warpedCanvas"></canvas>
     </div>
 
@@ -72,7 +68,7 @@
     <button class="btn btn-primary" onclick="handleSolve()">✨ Solve Puzzle</button>
     <button class="btn btn-secondary" onclick="clearBoard()">Clear Grid</button>
 
-    <p class="tip">💡 Keep all 4 outer corners of the Sudoku square visible in the photo. Tap any cell to fix a misread number if needed.</p>
+    <p class="tip">💡 Keep all 4 outer borders of the Sudoku grid inside the frame. Tap any cell to fix a digit if needed.</p>
 </div>
 
 <img id="hiddenImg" style="display:none;" />
@@ -82,7 +78,6 @@
     const boardElement = document.getElementById('board');
     const statusElement = document.getElementById('status');
     const previewBox = document.getElementById('previewBox');
-    const warpedCanvas = document.getElementById('warpedCanvas');
     const hiddenImg = document.getElementById('hiddenImg');
     const cells = [];
 
@@ -96,7 +91,10 @@
         cells.length = 0;
         for (let i = 0; i < 81; i++) {
             const input = document.createElement('input');
-            input.type = 'text'; input.inputMode = 'numeric'; input.maxLength = 1; input.className = 'cell';
+            input.type = 'text';
+            input.inputMode = 'numeric';
+            input.maxLength = 1;
+            input.className = 'cell';
             input.addEventListener('input', (e) => {
                 e.target.value = e.target.value.replace(/[^1-9]/g, '');
                 e.target.classList.remove('solved');
@@ -114,10 +112,10 @@
         const file = e.target.files[0];
         if (!file) return;
         if (!cvReady) {
-            statusElement.innerText = "⏳ Still loading Vision AI, please wait 2 seconds and try again...";
+            statusElement.innerText = "⏳ Vision AI still loading, please wait 2 seconds...";
             return;
         }
-        clearBoard();
+        clearBoard(true);
         statusElement.innerText = "🔍 Detecting Sudoku grid & straightening perspective...";
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -134,18 +132,16 @@
         let blurred = new cv.Mat();
         let thresh = new cv.Mat();
 
-        // Resize huge camera photos to max 1000px for fast, accurate contour detection
-        const maxDim = 1000;
+        const maxDim = 1200;
         if (src.cols > maxDim || src.rows > maxDim) {
             const scale = maxDim / Math.max(src.cols, src.rows);
             cv.resize(src, src, new cv.Size(Math.round(src.cols * scale), Math.round(src.rows * scale)));
         }
 
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-        cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
-        cv.adaptiveThreshold(blurred, thresh, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 15, 4);
+        cv.GaussianBlur(gray, blurred, new cv.Size(7, 7), 0);
+        cv.adaptiveThreshold(blurred, thresh, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 19, 5);
 
-        // Find the largest 4-corner quadrilateral (the outer Sudoku grid)
         let contours = new cv.MatVector();
         let hierarchy = new cv.Mat();
         cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
@@ -156,7 +152,7 @@
         for (let i = 0; i < contours.size(); ++i) {
             let cnt = contours.get(i);
             let area = cv.contourArea(cnt);
-            if (area > (src.cols * src.rows * 0.1)) { // Must be at least 10% of image area
+            if (area > (src.cols * src.rows * 0.1)) {
                 let peri = cv.arcLength(cnt, true);
                 let approx = new cv.Mat();
                 cv.approxPolyDP(cnt, approx, 0.02 * peri, true);
@@ -175,7 +171,6 @@
         let warpedGray = new cv.Mat();
 
         if (bestApprox) {
-            // Order the 4 corners: top-left, top-right, bottom-right, bottom-left
             const pts = [];
             for (let i = 0; i < 4; i++) {
                 pts.push({ x: bestApprox.data32S[i * 2], y: bestApprox.data32S[i * 2 + 1] });
@@ -192,100 +187,125 @@
 
             srcTri.delete(); dstTri.delete(); M.delete(); bestApprox.delete();
         } else {
-            // Fallback if outer border was cropped out: resize directly
             cv.resize(gray, warpedGray, new cv.Size(warpSize, warpSize));
         }
 
-        // Binarize & slightly thicken strokes so thin fonts read clearly
-        let warpedBin = new cv.Mat();
-        cv.adaptiveThreshold(warpedGray, warpedBin, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 25, 10);
-        let kernel = cv.Mat.ones(2, 2, cv.CV_8U);
-        cv.dilate(warpedBin, warpedBin, kernel);
-
-        // Show visual debug preview of flattened grid
         cv.imshow('warpedCanvas', warpedGray);
         previewBox.style.display = 'block';
 
-        // Extract and read each of the 81 cells
-        await readCellsWithTesseract(warpedBin, warpSize);
+        await readGridViaRowStrips(warpedGray, warpSize);
 
-        // Free OpenCV memory
         src.delete(); gray.delete(); blurred.delete(); thresh.delete();
-        contours.delete(); hierarchy.delete(); warpedGray.delete(); warpedBin.delete(); kernel.delete();
+        contours.delete(); hierarchy.delete(); warpedGray.delete();
     }
 
-    async function readCellsWithTesseract(warpedBin, warpSize) {
+    async function readGridViaRowStrips(warpedGray, warpSize) {
         try {
             const worker = await Tesseract.createWorker('eng');
             await worker.setParameters({
                 tessedit_char_whitelist: '123456789',
-                tessedit_pageseg_mode: Tesseract.PSM.SINGLE_CHAR,
+                tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
             });
 
             const cellDim = warpSize / 9; // 100px
-            const pad = 14; // Ignore outer grid lines
-            const cleanCanvas = document.createElement('canvas');
-            cleanCanvas.width = 140;
-            cleanCanvas.height = 140;
-            const cleanCtx = cleanCanvas.getContext('2d');
+            const pad = 11; // Strip border lines
+            const slotWidth = 140;
+            const stripHeight = 140;
+
+            const stripCanvas = document.createElement('canvas');
+            stripCanvas.width = slotWidth * 9;
+            stripCanvas.height = stripHeight;
+            const stripCtx = stripCanvas.getContext('2d');
 
             for (let r = 0; r < 9; r++) {
                 statusElement.innerText = `🔍 Reading row ${r + 1} of 9...`;
+                stripCtx.fillStyle = '#FFFFFF';
+                stripCtx.fillRect(0, 0, stripCanvas.width, stripCanvas.height);
+
+                let activeCols = [];
+
                 for (let c = 0; c < 9; c++) {
                     let rect = new cv.Rect(c * cellDim + pad, r * cellDim + pad, cellDim - pad * 2, cellDim - pad * 2);
-                    let cellRoi = warpedBin.roi(rect);
+                    let cellGray = warpedGray.roi(rect);
 
-                    // Find largest contour inside the cell (the digit itself, ignoring stray specks)
+                    // Per-cell Otsu binarization handles localized shadows cleanly
+                    let cellBin = new cv.Mat();
+                    cv.threshold(cellGray, cellBin, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU);
+
+                    // Check contrast span so blank white/gray cells don't produce Otsu noise
+                    let minMax = cv.minMaxLoc(cellGray);
+                    if ((minMax.maxVal - minMax.minVal) < 45) {
+                        cellGray.delete(); cellBin.delete();
+                        continue;
+                    }
+
+                    // Find largest centered digit contour
                     let cnts = new cv.MatVector();
                     let hier = new cv.Mat();
-                    cv.findContours(cellRoi, cnts, hier, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+                    cv.findContours(cellBin, cnts, hier, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
                     let bestRect = null;
                     let bestArea = 0;
+                    const innerSize = cellDim - pad * 2; // 78px
+
                     for (let i = 0; i < cnts.size(); i++) {
-                        let bRect = cv.boundingRect(cnts.get(i));
-                        let area = bRect.width * bRect.height;
-                        // Digit must be reasonably tall and not touch all 4 edges
-                        if (bRect.height > 20 && bRect.height < 68 && bRect.width > 6 && bRect.width < 65 && area > bestArea) {
+                        let b = cv.boundingRect(cnts.get(i));
+                        let area = b.width * b.height;
+                        let centerX = b.x + b.width / 2;
+                        let centerY = b.y + b.height / 2;
+                        let isCentered = centerX > 14 && centerX < (innerSize - 14) && centerY > 14 && centerY < (innerSize - 14);
+
+                        if (isCentered && b.height >= 22 && b.height <= 64 && b.width >= 5 && b.width <= 56 && area > bestArea) {
                             bestArea = area;
-                            bestRect = bRect;
+                            bestRect = b;
                         }
                     }
 
                     if (bestRect) {
-                        // Draw normalized black-on-white digit centered in 140x140 canvas with generous white border
-                        cleanCtx.fillStyle = '#FFFFFF';
-                        cleanCtx.fillRect(0, 0, 140, 140);
+                        activeCols.push(c);
+                        let digitMat = cellBin.roi(bestRect);
 
-                        let digitMat = cellRoi.roi(bestRect);
-                        let scale = 70 / Math.max(bestRect.width, bestRect.height);
-                        let newW = Math.round(bestRect.width * scale);
-                        let newH = Math.round(bestRect.height * scale);
-                        let resizedDigit = new cv.Mat();
-                        cv.resize(digitMat, resizedDigit, new cv.Size(newW, newH));
-
-                        // Invert back to black text on white background for Tesseract
-                        cv.bitwise_not(resizedDigit, resizedDigit);
+                        // Preserve aspect ratio cleanly (prevents thin '1' from stretching into '7' or '4')
+                        let scale = 68 / bestRect.height;
+                        let newW = Math.max(6, Math.round(bestRect.width * scale));
+                        let newH = 68;
+                        let resized = new cv.Mat();
+                        cv.resize(digitMat, resized, new cv.Size(newW, newH), 0, 0, cv.INTER_AREA);
+                        cv.bitwise_not(resized, resized);
 
                         let tempCanvas = document.createElement('canvas');
-                        cv.imshow(tempCanvas, resizedDigit);
-                        cleanCtx.drawImage(tempCanvas, Math.floor((140 - newW) / 2), Math.floor((140 - newH) / 2));
+                        cv.imshow(tempCanvas, resized);
 
-                        digitMat.delete(); resizedDigit.delete();
+                        let drawX = c * slotWidth + Math.floor((slotWidth - newW) / 2);
+                        let drawY = Math.floor((stripHeight - newH) / 2);
+                        stripCtx.drawImage(tempCanvas, drawX, drawY);
 
-                        const { data: { text } } = await worker.recognize(cleanCanvas);
-                        const digit = text.trim().replace(/[^1-9]/g, '');
-                        if (digit.length === 1) {
-                            cells[r * 9 + c].value = digit;
-                        }
+                        digitMat.delete(); resized.delete();
                     }
 
-                    cellRoi.delete(); cnts.delete(); hier.delete();
+                    cellGray.delete(); cellBin.delete(); cnts.delete(); hier.delete();
+                }
+
+                if (activeCols.length === 0) continue;
+
+                // Read entire row at once and map each detected symbol back to its exact column slot
+                const { data } = await worker.recognize(stripCanvas);
+                if (data.symbols && data.symbols.length > 0) {
+                    for (const sym of data.symbols) {
+                        const ch = sym.text.trim().replace(/[^1-9]/g, '');
+                        if (ch.length === 1) {
+                            const midX = (sym.bbox.x0 + sym.bbox.x1) / 2;
+                            const colIdx = Math.floor(midX / slotWidth);
+                            if (colIdx >= 0 && colIdx < 9 && activeCols.includes(colIdx)) {
+                                cells[r * 9 + colIdx].value = ch;
+                            }
+                        }
+                    }
                 }
             }
 
             await worker.terminate();
-            statusElement.innerText = "✅ Scan complete! Check the grid & click Solve.";
+            statusElement.innerText = "✅ Scan complete! Review any digit if needed & click Solve.";
         } catch (err) {
             console.error(err);
             statusElement.innerText = "❌ OCR Error. Please retry.";
@@ -294,15 +314,33 @@
 
     function handleSolve() {
         const grid = [];
+        let filledCount = 0;
+
         for (let r = 0; r < 9; r++) {
             const row = [];
-            for (let c = 0; c < 9; c++) row.push(parseInt(cells[r * 9 + c].value) || 0);
+            for (let c = 0; c < 9; c++) {
+                const val = parseInt(cells[r * 9 + c].value) || 0;
+                if (val !== 0) filledCount++;
+                row.push(val);
+            }
             grid.push(row);
         }
-        if (!isValidInitialBoard(grid)) {
-            statusElement.innerText = "⚠️ Invalid grid! Duplicate number found (check misread digits).";
+
+        // Prevent solving an empty or cleared board
+        if (filledCount === 0) {
+            statusElement.innerText = "⚠️ The grid is empty! Upload a photo or enter numbers first.";
             return;
         }
+        if (filledCount < 10) {
+            statusElement.innerText = `⚠️ Only ${filledCount} numbers entered. Add more clues before solving.`;
+            return;
+        }
+
+        if (!isValidInitialBoard(grid)) {
+            statusElement.innerText = "⚠️ Invalid puzzle! Duplicate numbers detected in row, column, or box.";
+            return;
+        }
+
         if (solveSudoku(grid)) {
             for (let r = 0; r < 9; r++) {
                 for (let c = 0; c < 9; c++) {
@@ -315,7 +353,7 @@
             }
             statusElement.innerText = "🎉 Sudoku Solved!";
         } else {
-            statusElement.innerText = "❌ No solution found. Check if a digit was misread.";
+            statusElement.innerText = "❌ No solution exists. Check if a scanned digit was misread.";
         }
     }
 
@@ -358,10 +396,17 @@
         return true;
     }
 
-    function clearBoard() {
-        cells.forEach(cell => { cell.value = ''; cell.classList.remove('solved'); });
+    function clearBoard(silent = false) {
+        cells.forEach(cell => {
+            cell.value = '';
+            cell.classList.remove('solved');
+        });
         previewBox.style.display = 'none';
-        statusElement.innerText = "Board cleared.";
+        document.getElementById('cameraInput').value = '';
+        document.getElementById('galleryInput').value = '';
+        if (!silent) {
+            statusElement.innerText = "Board cleared. Ready for a new puzzle.";
+        }
     }
 </script>
 </body>
