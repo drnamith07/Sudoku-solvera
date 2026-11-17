@@ -1,453 +1,589 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Vision Sudoku Solver</title>
-    <!-- Tesseract.js for Optical Character Recognition (OCR) -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <style>
-        :root {
-            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
-            --glass-bg: rgba(255, 255, 255, 0.08);
-            --glass-border: rgba(255, 255, 255, 0.15);
-            --accent: #38bdf8;
-            --accent-hover: #0284c7;
-            --solved-color: #4ade80;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-        }
-
-        body {
-            background: var(--bg-gradient);
-            color: var(--text-main);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-        }
-
-        .container {
-            background: var(--glass-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 28px;
-            max-width: 480px;
-            width: 100%;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            text-align: center;
-        }
-
-        h1 {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-bottom: 6px;
-            background: linear-gradient(to right, #38bdf8, #818cf8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        p.subtitle {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            margin-bottom: 24px;
-        }
-
-        /* Upload / Camera Buttons */
-        .upload-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid var(--glass-border);
-            color: var(--text-main);
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
-        }
-
-        .btn-primary {
-            background: var(--accent);
-            color: #0f172a;
-            border: none;
-            width: 100%;
-            font-size: 1.05rem;
-            padding: 14px;
-            margin-top: 16px;
-        }
-
-        .btn-primary:hover {
-            background: var(--accent-hover);
-            color: white;
-        }
-
-        .btn-secondary {
-            background: transparent;
-            border: 1px solid var(--text-muted);
-            color: var(--text-muted);
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        input[type="file"] {
-            display: none;
-        }
-
-        /* Status & Progress */
-        #status {
-            font-size: 0.85rem;
-            color: var(--accent);
-            margin-bottom: 12px;
-            min-height: 20px;
-        }
-
-        /* Sudoku Grid */
-        .sudoku-board {
-            display: grid;
-            grid-template-columns: repeat(9, 1fr);
-            border: 3px solid var(--accent);
-            border-radius: 8px;
-            overflow: hidden;
-            background: rgba(15, 23, 42, 0.8);
-            aspect-ratio: 1 / 1;
-            width: 100%;
-            margin: 0 auto;
-        }
-
-        .cell {
-            width: 100%;
-            height: 100%;
-            background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            color: var(--text-main);
-            text-align: center;
-            font-size: 1.25rem;
-            font-weight: 600;
-            outline: none;
-            transition: background 0.2s;
-        }
-
-        .cell:focus {
-            background: rgba(56, 189, 248, 0.25);
-        }
-
-        /* Thick 3x3 Subgrid Borders */
-        .cell:nth-child(3n) {
-            border-right: 2px solid var(--accent);
-        }
-        .cell:nth-child(9n) {
-            border-right: none;
-        }
-        .cell:nth-child(n+19):nth-child(-n+27),
-        .cell:nth-child(n+46):nth-child(-n+54) {
-            border-bottom: 2px solid var(--accent);
-        }
-
-        .cell.solved {
-            color: var(--solved-color);
-            font-weight: 700;
-            animation: popIn 0.3s ease forwards;
-        }
-
-        @keyframes popIn {
-            0% { transform: scale(0.8); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        /* Hidden canvas for image processing */
-        #processCanvas {
-            display: none;
-        }
-
-        .tip {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            margin-top: 14px;
-            line-height: 1.4;
-        }
-    </style>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2775.1">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  </style>
 </head>
 <body>
-
-<div class="container">
-    <h1>Vision Sudoku Solver</h1>
-    <p class="subtitle">Snap a photo or upload a cropped Sudoku grid</p>
-
-    <div class="upload-group">
-        <!-- Opens Camera directly on mobile devices -->
-        <label class="btn">
-            📷 Take Photo
-            <input type="file" id="cameraInput" accept="image/*" capture="environment">
-        </label>
-        <!-- Opens Gallery / File Picker -->
-        <label class="btn">
-            🖼️ Gallery
-            <input type="file" id="galleryInput" accept="image/*">
-        </label>
-    </div>
-
-    <div id="status">Ready. Upload an image or type numbers manually.</div>
-
-    <div class="sudoku-board" id="board"></div>
-
-    <button class="btn btn-primary" onclick="handleSolve()">✨ Solve Puzzle</button>
-    <button class="btn btn-secondary" onclick="clearBoard()">Clear Grid</button>
-
-    <p class="tip">💡 <b>Pro Tip:</b> For the best AI scan accuracy, crop your photo tightly around the 9×9 outer border of the Sudoku puzzle before uploading. You can tap any cell to fix misread digits.</p>
-</div>
-
-<canvas id="processCanvas"></canvas>
-
-<script>
-    const boardElement = document.getElementById('board');
-    const statusElement = document.getElementById('status');
-    const cells = [];
-
-    // 1. Initialize the 9x9 UI Grid
-    function initBoard() {
-        boardElement.innerHTML = '';
-        cells.length = 0;
-        for (let i = 0; i < 81; i++) {
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.inputMode = 'numeric';
-            input.maxLength = 1;
-            input.className = 'cell';
-            
-            // Allow only digits 1-9
-            input.addEventListener('input', (e) => {
-                e.target.value = e.target.value.replace(/[^1-9]/g, '');
-                e.target.classList.remove('solved');
-            });
-
-            boardElement.appendChild(input);
-            cells.push(input);
-        }
-    }
-
-    initBoard();
-
-    // 2. Handle Image Upload (Camera & Gallery)
-    document.getElementById('cameraInput').addEventListener('change', processImageUpload);
-    document.getElementById('galleryInput').addEventListener('change', processImageUpload);
-
-    function processImageUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        statusElement.innerText = "⏳ Processing image & scanning digits...";
-        clearBoard();
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = new Image();
-            img.onload = function() {
-                scanGridWithOCR(img);
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-    }
-
-    // 3. Slice Image into 81 Cells & Run OCR
-    async function scanGridWithOCR(img) {
-        const canvas = document.getElementById('processCanvas');
-        const ctx = canvas.getContext('2d');
-        
-        // Normalize image size to a clean square
-        const size = 900; 
-        canvas.width = size;
-        canvas.height = size;
-        ctx.drawImage(img, 0, 0, size, size);
-
-        // Convert to high-contrast grayscale to help Tesseract read cleanly
-        const imgData = ctx.getImageData(0, 0, size, size);
-        const data = imgData.data;
-        for (let i = 0; i < data.length; i += 4) {
-            const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-            const threshold = avg > 140 ? 255 : 0; // Binarize
-            data[i] = data[i + 1] = data[i + 2] = threshold;
-        }
-        ctx.putImageData(imgData, 0, 0);
-
-        const cellSize = size / 9;
-        const padding = 14; // Crop out grid border lines inside each cell
-
-        try {
-            const worker = await Tesseract.createWorker('eng');
-            await worker.setParameters({
-                tessedit_char_whitelist: '123456789',
-                tessedit_pageseg_mode: Tesseract.PSM.SINGLE_CHAR,
-            });
-
-            const cellCanvas = document.createElement('canvas');
-            cellCanvas.width = cellSize - padding * 2;
-            cellCanvas.height = cellSize - padding * 2;
-            const cellCtx = cellCanvas.getContext('2d');
-
-            for (let row = 0; row < 9; row++) {
-                statusElement.innerText = `🔍 Scanning row ${row + 1} of 9...`;
-                for (let col = 0; col < 9; col++) {
-                    // Extract individual cell without border lines
-                    cellCtx.drawImage(
-                        canvas,
-                        col * cellSize + padding,
-                        row * cellSize + padding,
-                        cellSize - padding * 2,
-                        cellSize - padding * 2,
-                        0, 0,
-                        cellCanvas.width,
-                        cellCanvas.height
-                    );
-
-                    // Check if cell is mostly white (empty) to skip unnecessary OCR
-                    if (isCellEmpty(cellCtx, cellCanvas.width, cellCanvas.height)) {
-                        continue;
-                    }
-
-                    const { data: { text } } = await worker.recognize(cellCanvas);
-                    const digit = text.trim().replace(/[^1-9]/g, '');
-                    if (digit.length === 1) {
-                        cells[row * 9 + col].value = digit;
-                    }
-                }
-            }
-
-            await worker.terminate();
-            statusElement.innerText = "✅ Scan complete! Review any misread cells and click Solve.";
-        } catch (err) {
-            console.error(err);
-            statusElement.innerText = "❌ Error scanning image. Try cropping closer to the grid.";
-        }
-    }
-
-    // Helper: Detect if a cell has enough dark pixels to contain a number
-    function isCellEmpty(ctx, w, h) {
-        const pixels = ctx.getImageData(0, 0, w, h).data;
-        let darkPixels = 0;
-        for (let i = 0; i < pixels.length; i += 4) {
-            if (pixels[i] === 0) darkPixels++;
-        }
-        // If less than 3% of the cell is black, assume it's empty
-        return (darkPixels / (w * h)) < 0.03;
-    }
-
-    // 4. Backtracking Sudoku Solver Algorithm
-    function handleSolve() {
-        const grid = [];
-        for (let r = 0; r < 9; r++) {
-            const row = [];
-            for (let c = 0; c < 9; c++) {
-                const val = parseInt(cells[r * 9 + c].value) || 0;
-                row.push(val);
-            }
-            grid.push(row);
-        }
-
-        if (!isValidInitialBoard(grid)) {
-            statusElement.innerText = "⚠️ Invalid puzzle! Duplicate numbers detected in row, column, or box.";
-            return;
-        }
-
-        if (solveSudoku(grid)) {
-            for (let r = 0; r < 9; r++) {
-                for (let c = 0; c < 9; c++) {
-                    const index = r * 9 + c;
-                    if (cells[index].value === '') {
-                        cells[index].value = grid[r][c];
-                        cells[index].classList.add('solved');
-                    }
-                }
-            }
-            statusElement.innerText = "🎉 Sudoku Solved!";
-        } else {
-            statusElement.innerText = "❌ No solution exists for this configuration.";
-        }
-    }
-
-    function isValidInitialBoard(board) {
-        for (let r = 0; r < 9; r++) {
-            for (let c = 0; c < 9; c++) {
-                const num = board[r][c];
-                if (num !== 0) {
-                    board[r][c] = 0;
-                    if (!isSafe(board, r, c, num)) {
-                        board[r][c] = num;
-                        return false;
-                    }
-                    board[r][c] = num;
-                }
-            }
-        }
-        return true;
-    }
-
-    function isSafe(board, row, col, num) {
-        for (let x = 0; x < 9; x++) {
-            if (board[row][x] === num || board[x][col] === num) return false;
-        }
-        const startRow = row - (row % 3);
-        const startCol = col - (col % 3);
-        for (let i = 0; i < 3; i++) {
-            for (let j = 0; j < 3; j++) {
-                if (board[i + startRow][j + startCol] === num) return false;
-            }
-        }
-        return true;
-    }
-
-    function solveSudoku(board) {
-        for (let row = 0; row < 9; row++) {
-            for (let col = 0; col < 9; col++) {
-                if (board[row][col] === 0) {
-                    for (let num = 1; num <= 9; num++) {
-                        if (isSafe(board, row, col, num)) {
-                            board[row][col] = num;
-                            if (solveSudoku(board)) return true;
-                            board[row][col] = 0;
-                        }
-                    }
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    function clearBoard() {
-        cells.forEach(cell => {
-            cell.value = '';
-            cell.classList.remove('solved');
-        });
-        statusElement.innerText = "Board cleared.";
-    }
-</script>
-
+<p class="p1">cat &lt;&lt; 'EOF' &gt; ~/Desktop/sudoku-solver/index.html</p>
+<p class="p1">&lt;!DOCTYPE html&gt;</p>
+<p class="p1">&lt;html lang="en"&gt;</p>
+<p class="p1">&lt;head&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta charset="UTF-8"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;title&gt;AI Vision Sudoku Solver&lt;/title&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- Cropper.js for precise grid alignment --&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"&gt;&lt;/script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- Tesseract.js v5 for OCR --&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"&gt;&lt;/script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;style&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>:root {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>--bg-gradient: linear-gradient(135deg, #090d16 0%, #17153b 50%, #2e1038 100%);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>--glass-bg: rgba(255, 255, 255, 0.07);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>--glass-border: rgba(255, 255, 255, 0.16);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>--accent: #38bdf8;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>--accent-hover: #0284c7;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>--solved-color: #4ade80;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>--text-main: #f8fafc;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>--text-muted: #94a3b8;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>* {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>box-sizing: border-box;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>margin: 0;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>padding: 0;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>body {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: var(--bg-gradient);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>color: var(--text-main);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>min-height: 100vh;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>display: flex;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>flex-direction: column;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>align-items: center;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>padding: 18px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.container {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: var(--glass-bg);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>backdrop-filter: blur(18px);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>-webkit-backdrop-filter: blur(18px);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border: 1px solid var(--glass-border);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border-radius: 24px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>padding: 24px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>max-width: 480px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>width: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>text-align: center;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>h1 {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>font-size: 1.75rem;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>font-weight: 700;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>margin-bottom: 4px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: linear-gradient(to right, #38bdf8, #a855f7);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>-webkit-background-clip: text;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>-webkit-text-fill-color: transparent;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>p.subtitle {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>color: var(--text-muted);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>font-size: 0.88rem;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>margin-bottom: 18px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.upload-group {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>display: grid;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>grid-template-columns: 1fr 1fr;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>gap: 10px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>margin-bottom: 14px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.btn {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: rgba(255, 255, 255, 0.1);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border: 1px solid var(--glass-border);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>color: var(--text-main);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>padding: 12px 14px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border-radius: 12px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>font-size: 0.92rem;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>font-weight: 600;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>cursor: pointer;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>transition: all 0.2s ease;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>display: flex;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>align-items: center;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>justify-content: center;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>gap: 8px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.btn:hover {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: rgba(255, 255, 255, 0.2);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>transform: translateY(-1px);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.btn-primary {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: var(--accent);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>color: #0f172a;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border: none;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>width: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>font-size: 1.02rem;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>padding: 14px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>margin-top: 14px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.btn-primary:hover {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: var(--accent-hover);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>color: white;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.btn-scan {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: linear-gradient(to right, #38bdf8, #818cf8);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>color: #0f172a;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border: none;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>width: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>padding: 12px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>margin-top: 10px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>font-weight: 700;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.btn-secondary {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: transparent;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border: 1px solid rgba(148, 163, 184, 0.4);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>color: var(--text-muted);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>width: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>margin-top: 8px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>input[type="file"] {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>display: none;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>#status {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>font-size: 0.85rem;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>color: var(--accent);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>margin-bottom: 12px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>min-height: 20px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>font-weight: 500;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>/* Interactive Cropper Modal Area */</p>
+<p class="p1"><span class="Apple-converted-space">        </span>#cropSection {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>display: none;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>margin-bottom: 16px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: rgba(0, 0, 0, 0.45);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>padding: 12px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border-radius: 16px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border: 1px solid var(--accent);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.crop-wrapper {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>max-height: 320px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>width: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>overflow: hidden;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border-radius: 8px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.crop-wrapper img {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>max-width: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>display: block;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>/* Sudoku Grid */</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.sudoku-board {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>display: grid;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>grid-template-columns: repeat(9, 1fr);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border: 3px solid var(--accent);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border-radius: 10px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>overflow: hidden;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: rgba(15, 23, 42, 0.85);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>aspect-ratio: 1 / 1;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>width: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>margin: 0 auto;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.cell {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>width: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>height: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: transparent;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border: 1px solid rgba(255, 255, 255, 0.12);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>color: var(--text-main);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>text-align: center;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>font-size: 1.25rem;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>font-weight: 600;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>outline: none;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>transition: background 0.15s;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.cell:focus {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: rgba(56, 189, 248, 0.25);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.cell:nth-child(3n) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border-right: 2px solid var(--accent);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.cell:nth-child(9n) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border-right: none;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.cell:nth-child(n+19):nth-child(-n+27),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.cell:nth-child(n+46):nth-child(-n+54) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border-bottom: 2px solid var(--accent);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.cell.solved {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>color: var(--solved-color);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>font-weight: 700;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>animation: popIn 0.25s ease forwards;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>@keyframes popIn {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>0% { transform: scale(0.75); opacity: 0; }</p>
+<p class="p1"><span class="Apple-converted-space">            </span>100% { transform: scale(1); opacity: 1; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.tip {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>font-size: 0.78rem;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>color: var(--text-muted);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>margin-top: 14px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>line-height: 1.4;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/style&gt;</p>
+<p class="p1">&lt;/head&gt;</p>
+<p class="p1">&lt;body&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;div class="container"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;h1&gt;Vision Sudoku Solver&lt;/h1&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;p class="subtitle"&gt;Snap or upload a photo, align the 9×9 box, and solve&lt;/p&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="upload-group"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label class="btn"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>📷 Take Photo</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;input type="file" id="cameraInput" accept="image/*" capture="environment"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label class="btn"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>🖼️ Gallery</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;input type="file" id="galleryInput" accept="image/*"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="status"&gt;Upload a Sudoku image or enter numbers manually.&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- Built-in Grid Cropper --&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="cropSection"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;p style="font-size: 0.8rem; color: #cbd5e1; margin-bottom: 8px;"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>Drag the square box tightly onto the &lt;b&gt;outer border&lt;/b&gt; of the 9×9 grid:</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="crop-wrapper"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;img id="cropImage" src="" alt="Crop Sudoku"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="btn btn-scan" onclick="confirmCropAndScan()"&gt;🔍 Extract Numbers from Box&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="sudoku-board" id="board"&gt;&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;button class="btn btn-primary" onclick="handleSolve()"&gt;✨ Solve Puzzle&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;button class="btn btn-secondary" onclick="clearBoard()"&gt;Clear Grid&lt;/button&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;p class="tip"&gt;💡 &lt;b&gt;Accuracy Tip:&lt;/b&gt; Align the blue crop box right over the outer black lines of the Sudoku square. Tap any cell afterward if a digit needs manual correction.&lt;/p&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const boardElement = document.getElementById('board');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const statusElement = document.getElementById('status');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const cropSection = document.getElementById('cropSection');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const cropImage = document.getElementById('cropImage');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const cells = [];</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let cropper = null;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 1. Initialize 9x9 UI Grid</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function initBoard() {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>boardElement.innerHTML = '';</p>
+<p class="p1"><span class="Apple-converted-space">        </span>cells.length = 0;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>for (let i = 0; i &lt; 81; i++) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const input = document.createElement('input');</p>
+<p class="p1"><span class="Apple-converted-space">            </span>input.type = 'text';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>input.inputMode = 'numeric';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>input.maxLength = 1;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>input.className = 'cell';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>input.addEventListener('input', (e) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>e.target.value = e.target.value.replace(/[^1-9]/g, '');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>e.target.classList.remove('solved');</p>
+<p class="p1"><span class="Apple-converted-space">            </span>});</p>
+<p class="p1"><span class="Apple-converted-space">            </span>boardElement.appendChild(input);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>cells.push(input);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>initBoard();</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 2. Load Image into Interactive Cropper</p>
+<p class="p1"><span class="Apple-converted-space">    </span>document.getElementById('cameraInput').addEventListener('change', loadIntoCropper);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>document.getElementById('galleryInput').addEventListener('change', loadIntoCropper);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function loadIntoCropper(event) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const file = event.target.files[0];</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (!file) return;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>const reader = new FileReader();</p>
+<p class="p1"><span class="Apple-converted-space">        </span>reader.onload = function(e) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>cropImage.src = e.target.result;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>cropSection.style.display = 'block';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>statusElement.innerText = "📐 Align the square box onto the 9×9 outer grid lines.";</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (cropper) cropper.destroy();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>cropper = new Cropper(cropImage, {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>aspectRatio: 1,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>viewMode: 1,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>autoCropArea: 0.85,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>background: false,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>guides: true // Shows 3x3 rule-of-thirds guides that match Sudoku boxes!</p>
+<p class="p1"><span class="Apple-converted-space">            </span>});</p>
+<p class="p1"><span class="Apple-converted-space">        </span>};</p>
+<p class="p1"><span class="Apple-converted-space">        </span>reader.readAsDataURL(file);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>event.target.value = ''; // Reset input so same file can be re-selected</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 3. Adaptive Preprocessing + Clean Digit Extraction</p>
+<p class="p1"><span class="Apple-converted-space">    </span>async function confirmCropAndScan() {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (!cropper) return;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// Get cropped square at crisp 900x900 resolution</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const croppedCanvas = cropper.getCroppedCanvas({ width: 900, height: 900 });</p>
+<p class="p1"><span class="Apple-converted-space">        </span>cropSection.style.display = 'none';</p>
+<p class="p1"><span class="Apple-converted-space">        </span>clearBoard();</p>
+<p class="p1"><span class="Apple-converted-space">        </span>statusElement.innerText = "⏳ Enhancing image &amp; removing grid lines...";</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>const ctx = croppedCanvas.getContext('2d');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const size = 900;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const imgData = ctx.getImageData(0, 0, size, size);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const gray = new Uint8Array(size * size);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// Convert to grayscale</p>
+<p class="p1"><span class="Apple-converted-space">        </span>for (let i = 0; i &lt; size * size; i++) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const p = i * 4;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>gray[i] = 0.299 * imgData.data[p] + 0.587 * imgData.data[p + 1] + 0.114 * imgData.data[p + 2];</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// Integral image for fast Adaptive Mean Thresholding (handles phone shadows!)</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const integral = new Uint32Array((size + 1) * (size + 1));</p>
+<p class="p1"><span class="Apple-converted-space">        </span>for (let y = 0; y &lt; size; y++) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>let rowSum = 0;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>for (let x = 0; x &lt; size; x++) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>rowSum += gray[y * size + x];</p>
+<p class="p1"><span class="Apple-converted-space">                </span>integral[(y + 1) * (size + 1) + (x + 1)] = integral[y * (size + 1) + (x + 1)] + rowSum;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>const binary = new Uint8Array(size * size); // 1 = ink (black), 0 = background (white)</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const radius = 25; // Local window size</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const C = 18;<span class="Apple-converted-space">      </span>// Contrast sensitivity</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>for (let y = 0; y &lt; size; y++) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const y1 = Math.max(0, y - radius);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const y2 = Math.min(size - 1, y + radius);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>for (let x = 0; x &lt; size; x++) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const x1 = Math.max(0, x - radius);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const x2 = Math.min(size - 1, x + radius);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const count = (x2 - x1 + 1) * (y2 - y1 + 1);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const sum = integral[(y2 + 1) * (size + 1) + (x2 + 1)]</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>- integral[y1 * (size + 1) + (x2 + 1)]</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>- integral[(y2 + 1) * (size + 1) + x1]</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>+ integral[y1 * (size + 1) + x1];</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const mean = sum / count;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>binary[y * size + x] = gray[y * size + x] &lt; (mean - C) ? 1 : 0;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>try {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const worker = await Tesseract.createWorker('eng');</p>
+<p class="p1"><span class="Apple-converted-space">            </span>await worker.setParameters({</p>
+<p class="p1"><span class="Apple-converted-space">                </span>tessedit_char_whitelist: '123456789',</p>
+<p class="p1"><span class="Apple-converted-space">                </span>tessedit_pageseg_mode: Tesseract.PSM.SINGLE_CHAR,</p>
+<p class="p1"><span class="Apple-converted-space">            </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>const cellDim = 100; // 900 / 9</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const cleanCanvas = document.createElement('canvas');</p>
+<p class="p1"><span class="Apple-converted-space">            </span>cleanCanvas.width = 120;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>cleanCanvas.height = 120;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const cleanCtx = cleanCanvas.getContext('2d');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>for (let r = 0; r &lt; 9; r++) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>statusElement.innerText = `🔍 Reading row ${r + 1} of 9...`;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>for (let c = 0; c &lt; 9; c++) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const isolatedDigit = extractCleanDigitFromCell(binary, size, c * cellDim, r * cellDim, cellDim);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (!isolatedDigit) continue; // Empty cell</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>// Render isolated digit centered on a clean white 120x120 canvas</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>cleanCtx.fillStyle = '#FFFFFF';</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>cleanCtx.fillRect(0, 0, 120, 120);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const { minX, minY, w, h, cellBin } = isolatedDigit;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const offsetX = Math.floor((120 - w) / 2);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const offsetY = Math.floor((120 - h) / 2);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>cleanCtx.fillStyle = '#000000';</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>for (let dy = 0; dy &lt; h; dy++) {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>for (let dx = 0; dx &lt; w; dx++) {</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>if (cellBin[(minY + dy) * cellDim + (minX + dx)] === 1) {</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>cleanCtx.fillRect(offsetX + dx, offsetY + dy, 1, 1);</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const { data: { text } } = await worker.recognize(cleanCanvas);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const digit = text.trim().replace(/[^1-9]/g, '');</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (digit.length === 1) {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>cells[r * 9 + c].value = digit;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>await worker.terminate();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>statusElement.innerText = "✅ Scan finished! Fix any wrong digit if needed, then click Solve.";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>} catch (err) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>console.error(err);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>statusElement.innerText = "❌ OCR Error. Please check your internet connection and retry.";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// Flood-fills away border grid lines and isolates the central digit bounding box</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function extractCleanDigitFromCell(globalBin, globalSize, startX, startY, cellDim) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const cellBin = new Uint8Array(cellDim * cellDim);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>for (let y = 0; y &lt; cellDim; y++) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>for (let x = 0; x &lt; cellDim; x++) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>cellBin[y * cellDim + x] = globalBin[(startY + y) * globalSize + (startX + x)];</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 1. Erase any black pixels connected to the outer 12px border (removes grid lines &amp; specks)</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const margin = 12;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const queue = [];</p>
+<p class="p1"><span class="Apple-converted-space">        </span>for (let y = 0; y &lt; cellDim; y++) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>for (let x = 0; x &lt; cellDim; x++) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if ((x &lt; margin || x &gt;= cellDim - margin || y &lt; margin || y &gt;= cellDim - margin) &amp;&amp; cellBin[y * cellDim + x] === 1) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>cellBin[y * cellDim + x] = 0;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>queue.push(y * cellDim + x);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>while (queue.length &gt; 0) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const idx = queue.pop();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const cx = idx % cellDim;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const cy = Math.floor(idx / cellDim);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const neighbors = [</p>
+<p class="p1"><span class="Apple-converted-space">                </span>[cx - 1, cy], [cx + 1, cy], [cx, cy - 1], [cx, cy + 1]</p>
+<p class="p1"><span class="Apple-converted-space">            </span>];</p>
+<p class="p1"><span class="Apple-converted-space">            </span>for (const [nx, ny] of neighbors) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (nx &gt;= 0 &amp;&amp; nx &lt; cellDim &amp;&amp; ny &gt;= 0 &amp;&amp; ny &lt; cellDim) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const nIdx = ny * cellDim + nx;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (cellBin[nIdx] === 1) {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>cellBin[nIdx] = 0;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>queue.push(nIdx);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 2. Find bounding box of the remaining central digit</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let minX = cellDim, maxX = 0, minY = cellDim, maxY = 0, inkCount = 0;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>for (let y = margin; y &lt; cellDim - margin; y++) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>for (let x = margin; x &lt; cellDim - margin; x++) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (cellBin[y * cellDim + x] === 1) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>inkCount++;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (x &lt; minX) minX = x;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (x &gt; maxX) maxX = x;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (y &lt; minY) minY = y;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (y &gt; maxY) maxY = y;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// Ignore noise specks (too few pixels or tiny height)</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const w = maxX - minX + 1;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const h = maxY - minY + 1;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (inkCount &lt; 45 || h &lt; 18 || w &lt; 6) return null;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>return { minX, minY, w, h, cellBin };</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 4. Backtracking Sudoku Solver</p>
+<p class="p1"><span class="Apple-converted-space">    </span>function handleSolve() {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const grid = [];</p>
+<p class="p1"><span class="Apple-converted-space">        </span>for (let r = 0; r &lt; 9; r++) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const row = [];</p>
+<p class="p1"><span class="Apple-converted-space">            </span>for (let c = 0; c &lt; 9; c++) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>row.push(parseInt(cells[r * 9 + c].value) || 0);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>grid.push(row);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (!isValidInitialBoard(grid)) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>statusElement.innerText = "⚠️ Invalid puzzle! Duplicate numbers exist in a row, column, or 3×3 box.";</p>
+<p class="p1"><span class="Apple-converted-space">            </span>return;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (solveSudoku(grid)) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>for (let r = 0; r &lt; 9; r++) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>for (let c = 0; c &lt; 9; c++) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const index = r * 9 + c;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (cells[index].value === '') {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>cells[index].value = grid[r][c];</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>cells[index].classList.add('solved');</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>statusElement.innerText = "🎉 Sudoku Solved!";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>statusElement.innerText = "❌ No valid solution found. Check if a scanned digit was misread.";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function isValidInitialBoard(board) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>for (let r = 0; r &lt; 9; r++) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>for (let c = 0; c &lt; 9; c++) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const num = board[r][c];</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (num !== 0) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>board[r][c] = 0;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (!isSafe(board, r, c, num)) {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>board[r][c] = num;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>return false;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>board[r][c] = num;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>return true;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function isSafe(board, row, col, num) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>for (let x = 0; x &lt; 9; x++) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (board[row][x] === num || board[x][col] === num) return false;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const startRow = row - (row % 3);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const startCol = col - (col % 3);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>for (let i = 0; i &lt; 3; i++) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>for (let j = 0; j &lt; 3; j++) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (board[i + startRow][j + startCol] === num) return false;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>return true;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function solveSudoku(board) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>for (let row = 0; row &lt; 9; row++) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>for (let col = 0; col &lt; 9; col++) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (board[row][col] === 0) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>for (let num = 1; num &lt;= 9; num++) {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>if (isSafe(board, row, col, num)) {</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>board[row][col] = num;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>if (solveSudoku(board)) return true;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>board[row][col] = 0;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>return false;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>return true;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function clearBoard() {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>cells.forEach(cell =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>cell.value = '';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>cell.classList.remove('solved');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>});</p>
+<p class="p1"><span class="Apple-converted-space">        </span>statusElement.innerText = "Board cleared.";</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1">&lt;/script&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;/body&gt;</p>
+<p class="p1">&lt;/html&gt;</p>
+<p class="p1">EOF</p>
 </body>
 </html>
