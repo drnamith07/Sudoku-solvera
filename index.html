@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Vision Sudoku Solver</title>
-    <!-- Cropper.js for precise grid alignment -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
-    <!-- Tesseract.js v5 for OCR -->
+    <!-- OpenCV.js for Perspective Warp & Grid Detection -->
+    <script async src="https://docs.opencv.org/4.9.0/opencv.js" onload="onOpenCvReady()"></script>
+    <!-- Tesseract.js v5 for Digit Recognition -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         :root {
@@ -20,235 +19,52 @@
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
         }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-        }
-
-        body {
-            background: var(--bg-gradient);
-            color: var(--text-main);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 18px;
-        }
-
-        .container {
-            background: var(--glass-bg);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 24px;
-            max-width: 480px;
-            width: 100%;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
-            text-align: center;
-        }
-
-        h1 {
-            font-size: 1.75rem;
-            font-weight: 700;
-            margin-bottom: 4px;
-            background: linear-gradient(to right, #38bdf8, #a855f7);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        p.subtitle {
-            color: var(--text-muted);
-            font-size: 0.88rem;
-            margin-bottom: 18px;
-        }
-
-        .upload-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 14px;
-        }
-
-        .btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid var(--glass-border);
-            color: var(--text-main);
-            padding: 12px 14px;
-            border-radius: 12px;
-            font-size: 0.92rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-1px);
-        }
-
-        .btn-primary {
-            background: var(--accent);
-            color: #0f172a;
-            border: none;
-            width: 100%;
-            font-size: 1.02rem;
-            padding: 14px;
-            margin-top: 14px;
-        }
-
-        .btn-primary:hover {
-            background: var(--accent-hover);
-            color: white;
-        }
-
-        .btn-scan {
-            background: linear-gradient(to right, #38bdf8, #818cf8);
-            color: #0f172a;
-            border: none;
-            width: 100%;
-            padding: 12px;
-            margin-top: 10px;
-            font-weight: 700;
-        }
-
-        .btn-secondary {
-            background: transparent;
-            border: 1px solid rgba(148, 163, 184, 0.4);
-            color: var(--text-muted);
-            width: 100%;
-            margin-top: 8px;
-        }
-
-        input[type="file"] {
-            display: none;
-        }
-
-        #status {
-            font-size: 0.85rem;
-            color: var(--accent);
-            margin-bottom: 12px;
-            min-height: 20px;
-            font-weight: 500;
-        }
-
-        /* Interactive Cropper Modal Area */
-        #cropSection {
-            display: none;
-            margin-bottom: 16px;
-            background: rgba(0, 0, 0, 0.45);
-            padding: 12px;
-            border-radius: 16px;
-            border: 1px solid var(--accent);
-        }
-
-        .crop-wrapper {
-            max-height: 320px;
-            width: 100%;
-            overflow: hidden;
-            border-radius: 8px;
-        }
-
-        .crop-wrapper img {
-            max-width: 100%;
-            display: block;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        body { background: var(--bg-gradient); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 16px; }
+        .container { background: var(--glass-bg); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid var(--glass-border); border-radius: 24px; padding: 22px; max-width: 480px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6); text-align: center; }
+        h1 { font-size: 1.7rem; font-weight: 700; margin-bottom: 4px; background: linear-gradient(to right, #38bdf8, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        p.subtitle { color: var(--text-muted); font-size: 0.86rem; margin-bottom: 16px; }
+        .upload-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+        .btn { background: rgba(255, 255, 255, 0.1); border: 1px solid var(--glass-border); color: var(--text-main); padding: 12px 14px; border-radius: 12px; font-size: 0.92rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn:hover { background: rgba(255, 255, 255, 0.2); }
+        .btn-primary { background: var(--accent); color: #0f172a; border: none; width: 100%; font-size: 1.02rem; padding: 14px; margin-top: 14px; }
+        .btn-primary:hover { background: var(--accent-hover); color: white; }
+        .btn-secondary { background: transparent; border: 1px solid rgba(148, 163, 184, 0.4); color: var(--text-muted); width: 100%; margin-top: 8px; }
+        input[type="file"] { display: none; }
+        #status { font-size: 0.84rem; color: var(--accent); margin-bottom: 12px; min-height: 20px; font-weight: 500; }
+        
+        /* Vision Preview Box */
+        #previewBox { display: none; margin-bottom: 14px; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.4); }
+        #previewBox p { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; }
+        #warpedCanvas { width: 150px; height: 150px; border-radius: 6px; border: 1px solid var(--accent); }
 
         /* Sudoku Grid */
-        .sudoku-board {
-            display: grid;
-            grid-template-columns: repeat(9, 1fr);
-            border: 3px solid var(--accent);
-            border-radius: 10px;
-            overflow: hidden;
-            background: rgba(15, 23, 42, 0.85);
-            aspect-ratio: 1 / 1;
-            width: 100%;
-            margin: 0 auto;
-        }
-
-        .cell {
-            width: 100%;
-            height: 100%;
-            background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            color: var(--text-main);
-            text-align: center;
-            font-size: 1.25rem;
-            font-weight: 600;
-            outline: none;
-            transition: background 0.15s;
-        }
-
-        .cell:focus {
-            background: rgba(56, 189, 248, 0.25);
-        }
-
-        .cell:nth-child(3n) {
-            border-right: 2px solid var(--accent);
-        }
-        .cell:nth-child(9n) {
-            border-right: none;
-        }
-        .cell:nth-child(n+19):nth-child(-n+27),
-        .cell:nth-child(n+46):nth-child(-n+54) {
-            border-bottom: 2px solid var(--accent);
-        }
-
-        .cell.solved {
-            color: var(--solved-color);
-            font-weight: 700;
-            animation: popIn 0.25s ease forwards;
-        }
-
-        @keyframes popIn {
-            0% { transform: scale(0.75); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        .tip {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            margin-top: 14px;
-            line-height: 1.4;
-        }
+        .sudoku-board { display: grid; grid-template-columns: repeat(9, 1fr); border: 3px solid var(--accent); border-radius: 10px; overflow: hidden; background: rgba(15, 23, 42, 0.85); aspect-ratio: 1 / 1; width: 100%; margin: 0 auto; }
+        .cell { width: 100%; height: 100%; background: transparent; border: 1px solid rgba(255, 255, 255, 0.12); color: var(--text-main); text-align: center; font-size: 1.25rem; font-weight: 600; outline: none; }
+        .cell:focus { background: rgba(56, 189, 248, 0.25); }
+        .cell:nth-child(3n) { border-right: 2px solid var(--accent); }
+        .cell:nth-child(9n) { border-right: none; }
+        .cell:nth-child(n+19):nth-child(-n+27), .cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid var(--accent); }
+        .cell.solved { color: var(--solved-color); font-weight: 700; animation: popIn 0.25s ease forwards; }
+        @keyframes popIn { 0% { transform: scale(0.75); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .tip { font-size: 0.76rem; color: var(--text-muted); margin-top: 12px; line-height: 1.4; }
     </style>
 </head>
 <body>
-
 <div class="container">
     <h1>Vision Sudoku Solver</h1>
-    <p class="subtitle">Snap or upload a photo, align the 9×9 box, and solve</p>
+    <p class="subtitle">Auto-straightens skewed photos & solves in milliseconds</p>
 
     <div class="upload-group">
-        <label class="btn">
-            📷 Take Photo
-            <input type="file" id="cameraInput" accept="image/*" capture="environment">
-        </label>
-        <label class="btn">
-            🖼️ Gallery
-            <input type="file" id="galleryInput" accept="image/*">
-        </label>
+        <label class="btn">📷 Take Photo<input type="file" id="cameraInput" accept="image/*" capture="environment"></label>
+        <label class="btn">🖼️ Gallery<input type="file" id="galleryInput" accept="image/*"></label>
     </div>
 
-    <div id="status">Upload a Sudoku image or enter numbers manually.</div>
+    <div id="status">⏳ Loading Computer Vision engine...</div>
 
-    <!-- Built-in Grid Cropper -->
-    <div id="cropSection">
-        <p style="font-size: 0.8rem; color: #cbd5e1; margin-bottom: 8px;">
-            Drag the square box tightly onto the <b>outer border</b> of the 9×9 grid:
-        </p>
-        <div class="crop-wrapper">
-            <img id="cropImage" src="" alt="Crop Sudoku">
-        </div>
-        <button class="btn btn-scan" onclick="confirmCropAndScan()">🔍 Extract Numbers from Box</button>
+    <div id="previewBox">
+        <p>AI Flattened Grid View (verify all 4 corners were detected):</p>
+        <canvas id="warpedCanvas"></canvas>
     </div>
 
     <div class="sudoku-board" id="board"></div>
@@ -256,27 +72,31 @@
     <button class="btn btn-primary" onclick="handleSolve()">✨ Solve Puzzle</button>
     <button class="btn btn-secondary" onclick="clearBoard()">Clear Grid</button>
 
-    <p class="tip">💡 <b>Accuracy Tip:</b> Align the blue crop box right over the outer black lines of the Sudoku square. Tap any cell afterward if a digit needs manual correction.</p>
+    <p class="tip">💡 Keep all 4 outer corners of the Sudoku square visible in the photo. Tap any cell to fix a misread number if needed.</p>
 </div>
 
+<img id="hiddenImg" style="display:none;" />
+
 <script>
+    let cvReady = false;
     const boardElement = document.getElementById('board');
     const statusElement = document.getElementById('status');
-    const cropSection = document.getElementById('cropSection');
-    const cropImage = document.getElementById('cropImage');
+    const previewBox = document.getElementById('previewBox');
+    const warpedCanvas = document.getElementById('warpedCanvas');
+    const hiddenImg = document.getElementById('hiddenImg');
     const cells = [];
-    let cropper = null;
 
-    // 1. Initialize 9x9 UI Grid
+    function onOpenCvReady() {
+        cvReady = true;
+        statusElement.innerText = "✅ Vision AI ready! Snap a photo or pick from Gallery.";
+    }
+
     function initBoard() {
         boardElement.innerHTML = '';
         cells.length = 0;
         for (let i = 0; i < 81; i++) {
             const input = document.createElement('input');
-            input.type = 'text';
-            input.inputMode = 'numeric';
-            input.maxLength = 1;
-            input.className = 'cell';
+            input.type = 'text'; input.inputMode = 'numeric'; input.maxLength = 1; input.className = 'cell';
             input.addEventListener('input', (e) => {
                 e.target.value = e.target.value.replace(/[^1-9]/g, '');
                 e.target.classList.remove('solved');
@@ -287,84 +107,114 @@
     }
     initBoard();
 
-    // 2. Load Image into Interactive Cropper
-    document.getElementById('cameraInput').addEventListener('change', loadIntoCropper);
-    document.getElementById('galleryInput').addEventListener('change', loadIntoCropper);
+    document.getElementById('cameraInput').addEventListener('change', handleFile);
+    document.getElementById('galleryInput').addEventListener('change', handleFile);
 
-    function loadIntoCropper(event) {
-        const file = event.target.files[0];
+    function handleFile(e) {
+        const file = e.target.files[0];
         if (!file) return;
-
+        if (!cvReady) {
+            statusElement.innerText = "⏳ Still loading Vision AI, please wait 2 seconds and try again...";
+            return;
+        }
+        clearBoard();
+        statusElement.innerText = "🔍 Detecting Sudoku grid & straightening perspective...";
         const reader = new FileReader();
-        reader.onload = function(e) {
-            cropImage.src = e.target.result;
-            cropSection.style.display = 'block';
-            statusElement.innerText = "📐 Align the square box onto the 9×9 outer grid lines.";
-
-            if (cropper) cropper.destroy();
-            cropper = new Cropper(cropImage, {
-                aspectRatio: 1,
-                viewMode: 1,
-                autoCropArea: 0.85,
-                background: false,
-                guides: true // Shows 3x3 rule-of-thirds guides that match Sudoku boxes!
-            });
+        reader.onload = (ev) => {
+            hiddenImg.onload = () => processWithOpenCV();
+            hiddenImg.src = ev.target.result;
         };
         reader.readAsDataURL(file);
-        event.target.value = ''; // Reset input so same file can be re-selected
+        e.target.value = '';
     }
 
-    // 3. Adaptive Preprocessing + Clean Digit Extraction
-    async function confirmCropAndScan() {
-        if (!cropper) return;
+    async function processWithOpenCV() {
+        let src = cv.imread(hiddenImg);
+        let gray = new cv.Mat();
+        let blurred = new cv.Mat();
+        let thresh = new cv.Mat();
 
-        // Get cropped square at crisp 900x900 resolution
-        const croppedCanvas = cropper.getCroppedCanvas({ width: 900, height: 900 });
-        cropSection.style.display = 'none';
-        clearBoard();
-        statusElement.innerText = "⏳ Enhancing image & removing grid lines...";
-
-        const ctx = croppedCanvas.getContext('2d');
-        const size = 900;
-        const imgData = ctx.getImageData(0, 0, size, size);
-        const gray = new Uint8Array(size * size);
-
-        // Convert to grayscale
-        for (let i = 0; i < size * size; i++) {
-            const p = i * 4;
-            gray[i] = 0.299 * imgData.data[p] + 0.587 * imgData.data[p + 1] + 0.114 * imgData.data[p + 2];
+        // Resize huge camera photos to max 1000px for fast, accurate contour detection
+        const maxDim = 1000;
+        if (src.cols > maxDim || src.rows > maxDim) {
+            const scale = maxDim / Math.max(src.cols, src.rows);
+            cv.resize(src, src, new cv.Size(Math.round(src.cols * scale), Math.round(src.rows * scale)));
         }
 
-        // Integral image for fast Adaptive Mean Thresholding (handles phone shadows!)
-        const integral = new Uint32Array((size + 1) * (size + 1));
-        for (let y = 0; y < size; y++) {
-            let rowSum = 0;
-            for (let x = 0; x < size; x++) {
-                rowSum += gray[y * size + x];
-                integral[(y + 1) * (size + 1) + (x + 1)] = integral[y * (size + 1) + (x + 1)] + rowSum;
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+        cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
+        cv.adaptiveThreshold(blurred, thresh, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 15, 4);
+
+        // Find the largest 4-corner quadrilateral (the outer Sudoku grid)
+        let contours = new cv.MatVector();
+        let hierarchy = new cv.Mat();
+        cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+        let maxArea = 0;
+        let bestApprox = null;
+
+        for (let i = 0; i < contours.size(); ++i) {
+            let cnt = contours.get(i);
+            let area = cv.contourArea(cnt);
+            if (area > (src.cols * src.rows * 0.1)) { // Must be at least 10% of image area
+                let peri = cv.arcLength(cnt, true);
+                let approx = new cv.Mat();
+                cv.approxPolyDP(cnt, approx, 0.02 * peri, true);
+                if (approx.rows === 4 && area > maxArea) {
+                    if (bestApprox) bestApprox.delete();
+                    bestApprox = approx;
+                    maxArea = area;
+                } else {
+                    approx.delete();
+                }
             }
+            cnt.delete();
         }
 
-        const binary = new Uint8Array(size * size); // 1 = ink (black), 0 = background (white)
-        const radius = 25; // Local window size
-        const C = 18;      // Contrast sensitivity
+        const warpSize = 900;
+        let warpedGray = new cv.Mat();
 
-        for (let y = 0; y < size; y++) {
-            const y1 = Math.max(0, y - radius);
-            const y2 = Math.min(size - 1, y + radius);
-            for (let x = 0; x < size; x++) {
-                const x1 = Math.max(0, x - radius);
-                const x2 = Math.min(size - 1, x + radius);
-                const count = (x2 - x1 + 1) * (y2 - y1 + 1);
-                const sum = integral[(y2 + 1) * (size + 1) + (x2 + 1)]
-                          - integral[y1 * (size + 1) + (x2 + 1)]
-                          - integral[(y2 + 1) * (size + 1) + x1]
-                          + integral[y1 * (size + 1) + x1];
-                const mean = sum / count;
-                binary[y * size + x] = gray[y * size + x] < (mean - C) ? 1 : 0;
+        if (bestApprox) {
+            // Order the 4 corners: top-left, top-right, bottom-right, bottom-left
+            const pts = [];
+            for (let i = 0; i < 4; i++) {
+                pts.push({ x: bestApprox.data32S[i * 2], y: bestApprox.data32S[i * 2 + 1] });
             }
+            pts.sort((a, b) => (a.x + a.y) - (b.x + b.y));
+            const tl = pts[0], br = pts[3];
+            const rem = [pts[1], pts[2]].sort((a, b) => (a.y - a.x) - (b.y - b.x));
+            const tr = rem[0], bl = rem[1];
+
+            let srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y]);
+            let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, warpSize, 0, warpSize, warpSize, 0, warpSize]);
+            let M = cv.getPerspectiveTransform(srcTri, dstTri);
+            cv.warpPerspective(gray, warpedGray, M, new cv.Size(warpSize, warpSize));
+
+            srcTri.delete(); dstTri.delete(); M.delete(); bestApprox.delete();
+        } else {
+            // Fallback if outer border was cropped out: resize directly
+            cv.resize(gray, warpedGray, new cv.Size(warpSize, warpSize));
         }
 
+        // Binarize & slightly thicken strokes so thin fonts read clearly
+        let warpedBin = new cv.Mat();
+        cv.adaptiveThreshold(warpedGray, warpedBin, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 25, 10);
+        let kernel = cv.Mat.ones(2, 2, cv.CV_8U);
+        cv.dilate(warpedBin, warpedBin, kernel);
+
+        // Show visual debug preview of flattened grid
+        cv.imshow('warpedCanvas', warpedGray);
+        previewBox.style.display = 'block';
+
+        // Extract and read each of the 81 cells
+        await readCellsWithTesseract(warpedBin, warpSize);
+
+        // Free OpenCV memory
+        src.delete(); gray.delete(); blurred.delete(); thresh.delete();
+        contours.delete(); hierarchy.delete(); warpedGray.delete(); warpedBin.delete(); kernel.delete();
+    }
+
+    async function readCellsWithTesseract(warpedBin, warpSize) {
         try {
             const worker = await Tesseract.createWorker('eng');
             await worker.setParameters({
@@ -372,127 +222,87 @@
                 tessedit_pageseg_mode: Tesseract.PSM.SINGLE_CHAR,
             });
 
-            const cellDim = 100; // 900 / 9
+            const cellDim = warpSize / 9; // 100px
+            const pad = 14; // Ignore outer grid lines
             const cleanCanvas = document.createElement('canvas');
-            cleanCanvas.width = 120;
-            cleanCanvas.height = 120;
+            cleanCanvas.width = 140;
+            cleanCanvas.height = 140;
             const cleanCtx = cleanCanvas.getContext('2d');
 
             for (let r = 0; r < 9; r++) {
                 statusElement.innerText = `🔍 Reading row ${r + 1} of 9...`;
                 for (let c = 0; c < 9; c++) {
-                    const isolatedDigit = extractCleanDigitFromCell(binary, size, c * cellDim, r * cellDim, cellDim);
-                    if (!isolatedDigit) continue; // Empty cell
+                    let rect = new cv.Rect(c * cellDim + pad, r * cellDim + pad, cellDim - pad * 2, cellDim - pad * 2);
+                    let cellRoi = warpedBin.roi(rect);
 
-                    // Render isolated digit centered on a clean white 120x120 canvas
-                    cleanCtx.fillStyle = '#FFFFFF';
-                    cleanCtx.fillRect(0, 0, 120, 120);
-                    const { minX, minY, w, h, cellBin } = isolatedDigit;
-                    const offsetX = Math.floor((120 - w) / 2);
-                    const offsetY = Math.floor((120 - h) / 2);
+                    // Find largest contour inside the cell (the digit itself, ignoring stray specks)
+                    let cnts = new cv.MatVector();
+                    let hier = new cv.Mat();
+                    cv.findContours(cellRoi, cnts, hier, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-                    cleanCtx.fillStyle = '#000000';
-                    for (let dy = 0; dy < h; dy++) {
-                        for (let dx = 0; dx < w; dx++) {
-                            if (cellBin[(minY + dy) * cellDim + (minX + dx)] === 1) {
-                                cleanCtx.fillRect(offsetX + dx, offsetY + dy, 1, 1);
-                            }
+                    let bestRect = null;
+                    let bestArea = 0;
+                    for (let i = 0; i < cnts.size(); i++) {
+                        let bRect = cv.boundingRect(cnts.get(i));
+                        let area = bRect.width * bRect.height;
+                        // Digit must be reasonably tall and not touch all 4 edges
+                        if (bRect.height > 20 && bRect.height < 68 && bRect.width > 6 && bRect.width < 65 && area > bestArea) {
+                            bestArea = area;
+                            bestRect = bRect;
                         }
                     }
 
-                    const { data: { text } } = await worker.recognize(cleanCanvas);
-                    const digit = text.trim().replace(/[^1-9]/g, '');
-                    if (digit.length === 1) {
-                        cells[r * 9 + c].value = digit;
+                    if (bestRect) {
+                        // Draw normalized black-on-white digit centered in 140x140 canvas with generous white border
+                        cleanCtx.fillStyle = '#FFFFFF';
+                        cleanCtx.fillRect(0, 0, 140, 140);
+
+                        let digitMat = cellRoi.roi(bestRect);
+                        let scale = 70 / Math.max(bestRect.width, bestRect.height);
+                        let newW = Math.round(bestRect.width * scale);
+                        let newH = Math.round(bestRect.height * scale);
+                        let resizedDigit = new cv.Mat();
+                        cv.resize(digitMat, resizedDigit, new cv.Size(newW, newH));
+
+                        // Invert back to black text on white background for Tesseract
+                        cv.bitwise_not(resizedDigit, resizedDigit);
+
+                        let tempCanvas = document.createElement('canvas');
+                        cv.imshow(tempCanvas, resizedDigit);
+                        cleanCtx.drawImage(tempCanvas, Math.floor((140 - newW) / 2), Math.floor((140 - newH) / 2));
+
+                        digitMat.delete(); resizedDigit.delete();
+
+                        const { data: { text } } = await worker.recognize(cleanCanvas);
+                        const digit = text.trim().replace(/[^1-9]/g, '');
+                        if (digit.length === 1) {
+                            cells[r * 9 + c].value = digit;
+                        }
                     }
+
+                    cellRoi.delete(); cnts.delete(); hier.delete();
                 }
             }
 
             await worker.terminate();
-            statusElement.innerText = "✅ Scan finished! Fix any wrong digit if needed, then click Solve.";
+            statusElement.innerText = "✅ Scan complete! Check the grid & click Solve.";
         } catch (err) {
             console.error(err);
-            statusElement.innerText = "❌ OCR Error. Please check your internet connection and retry.";
+            statusElement.innerText = "❌ OCR Error. Please retry.";
         }
     }
 
-    // Flood-fills away border grid lines and isolates the central digit bounding box
-    function extractCleanDigitFromCell(globalBin, globalSize, startX, startY, cellDim) {
-        const cellBin = new Uint8Array(cellDim * cellDim);
-        for (let y = 0; y < cellDim; y++) {
-            for (let x = 0; x < cellDim; x++) {
-                cellBin[y * cellDim + x] = globalBin[(startY + y) * globalSize + (startX + x)];
-            }
-        }
-
-        // 1. Erase any black pixels connected to the outer 12px border (removes grid lines & specks)
-        const margin = 12;
-        const queue = [];
-        for (let y = 0; y < cellDim; y++) {
-            for (let x = 0; x < cellDim; x++) {
-                if ((x < margin || x >= cellDim - margin || y < margin || y >= cellDim - margin) && cellBin[y * cellDim + x] === 1) {
-                    cellBin[y * cellDim + x] = 0;
-                    queue.push(y * cellDim + x);
-                }
-            }
-        }
-
-        while (queue.length > 0) {
-            const idx = queue.pop();
-            const cx = idx % cellDim;
-            const cy = Math.floor(idx / cellDim);
-            const neighbors = [
-                [cx - 1, cy], [cx + 1, cy], [cx, cy - 1], [cx, cy + 1]
-            ];
-            for (const [nx, ny] of neighbors) {
-                if (nx >= 0 && nx < cellDim && ny >= 0 && ny < cellDim) {
-                    const nIdx = ny * cellDim + nx;
-                    if (cellBin[nIdx] === 1) {
-                        cellBin[nIdx] = 0;
-                        queue.push(nIdx);
-                    }
-                }
-            }
-        }
-
-        // 2. Find bounding box of the remaining central digit
-        let minX = cellDim, maxX = 0, minY = cellDim, maxY = 0, inkCount = 0;
-        for (let y = margin; y < cellDim - margin; y++) {
-            for (let x = margin; x < cellDim - margin; x++) {
-                if (cellBin[y * cellDim + x] === 1) {
-                    inkCount++;
-                    if (x < minX) minX = x;
-                    if (x > maxX) maxX = x;
-                    if (y < minY) minY = y;
-                    if (y > maxY) maxY = y;
-                }
-            }
-        }
-
-        // Ignore noise specks (too few pixels or tiny height)
-        const w = maxX - minX + 1;
-        const h = maxY - minY + 1;
-        if (inkCount < 45 || h < 18 || w < 6) return null;
-
-        return { minX, minY, w, h, cellBin };
-    }
-
-    // 4. Backtracking Sudoku Solver
     function handleSolve() {
         const grid = [];
         for (let r = 0; r < 9; r++) {
             const row = [];
-            for (let c = 0; c < 9; c++) {
-                row.push(parseInt(cells[r * 9 + c].value) || 0);
-            }
+            for (let c = 0; c < 9; c++) row.push(parseInt(cells[r * 9 + c].value) || 0);
             grid.push(row);
         }
-
         if (!isValidInitialBoard(grid)) {
-            statusElement.innerText = "⚠️ Invalid puzzle! Duplicate numbers exist in a row, column, or 3×3 box.";
+            statusElement.innerText = "⚠️ Invalid grid! Duplicate number found (check misread digits).";
             return;
         }
-
         if (solveSudoku(grid)) {
             for (let r = 0; r < 9; r++) {
                 for (let c = 0; c < 9; c++) {
@@ -505,7 +315,7 @@
             }
             statusElement.innerText = "🎉 Sudoku Solved!";
         } else {
-            statusElement.innerText = "❌ No valid solution found. Check if a scanned digit was misread.";
+            statusElement.innerText = "❌ No solution found. Check if a digit was misread.";
         }
     }
 
@@ -515,10 +325,7 @@
                 const num = board[r][c];
                 if (num !== 0) {
                     board[r][c] = 0;
-                    if (!isSafe(board, r, c, num)) {
-                        board[r][c] = num;
-                        return false;
-                    }
+                    if (!isSafe(board, r, c, num)) { board[r][c] = num; return false; }
                     board[r][c] = num;
                 }
             }
@@ -527,16 +334,9 @@
     }
 
     function isSafe(board, row, col, num) {
-        for (let x = 0; x < 9; x++) {
-            if (board[row][x] === num || board[x][col] === num) return false;
-        }
-        const startRow = row - (row % 3);
-        const startCol = col - (col % 3);
-        for (let i = 0; i < 3; i++) {
-            for (let j = 0; j < 3; j++) {
-                if (board[i + startRow][j + startCol] === num) return false;
-            }
-        }
+        for (let x = 0; x < 9; x++) if (board[row][x] === num || board[x][col] === num) return false;
+        const startRow = row - (row % 3), startCol = col - (col % 3);
+        for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) if (board[i + startRow][j + startCol] === num) return false;
         return true;
     }
 
@@ -559,13 +359,10 @@
     }
 
     function clearBoard() {
-        cells.forEach(cell => {
-            cell.value = '';
-            cell.classList.remove('solved');
-        });
+        cells.forEach(cell => { cell.value = ''; cell.classList.remove('solved'); });
+        previewBox.style.display = 'none';
         statusElement.innerText = "Board cleared.";
     }
 </script>
-
 </body>
 </html>
