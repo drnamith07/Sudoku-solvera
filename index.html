@@ -14,6 +14,7 @@
             --accent: #38bdf8;
             --accent-hover: #0284c7;
             --solved-color: #4ade80;
+            --warn-color: #fbbf24;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
         }
@@ -33,11 +34,13 @@
 
         #previewBox { display: none; margin-bottom: 14px; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.4); }
         #previewBox p { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; }
-        #warpedCanvas { width: 160px; height: 160px; border-radius: 6px; border: 1px solid var(--accent); }
+        .preview-row { display: flex; justify-content: center; gap: 14px; align-items: center; }
+        #warpedCanvas { width: 140px; height: 140px; border-radius: 6px; border: 1px solid var(--accent); }
 
         .sudoku-board { display: grid; grid-template-columns: repeat(9, 1fr); border: 3px solid var(--accent); border-radius: 10px; overflow: hidden; background: rgba(15, 23, 42, 0.85); aspect-ratio: 1 / 1; width: 100%; margin: 0 auto; }
         .cell { width: 100%; height: 100%; background: transparent; border: 1px solid rgba(255, 255, 255, 0.12); color: var(--text-main); text-align: center; font-size: 1.25rem; font-weight: 600; outline: none; }
         .cell:focus { background: rgba(56, 189, 248, 0.25); }
+        .cell.low-conf { color: var(--warn-color); background: rgba(251, 191, 36, 0.12); }
         .cell:nth-child(3n) { border-right: 2px solid var(--accent); }
         .cell:nth-child(9n) { border-right: none; }
         .cell:nth-child(n+19):nth-child(-n+27), .cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid var(--accent); }
@@ -49,7 +52,7 @@
 <body>
 <div class="container">
     <h1>Vision Sudoku Solver</h1>
-    <p class="subtitle">High-accuracy perspective warp & row-strip OCR</p>
+    <p class="subtitle">Connected-Component Vision & Instant Solver</p>
 
     <div class="upload-group">
         <label class="btn">📷 Take Photo<input type="file" id="cameraInput" accept="image/*" capture="environment"></label>
@@ -59,8 +62,10 @@
     <div id="status">⏳ Loading Computer Vision engine...</div>
 
     <div id="previewBox">
-        <p>AI Flattened Grid View (verify all 4 outer corners align):</p>
-        <canvas id="warpedCanvas"></canvas>
+        <p>Detected 9×9 Grid (Amber cells = double-check digit):</p>
+        <div class="preview-row">
+            <canvas id="warpedCanvas"></canvas>
+        </div>
     </div>
 
     <div class="sudoku-board" id="board"></div>
@@ -68,7 +73,7 @@
     <button class="btn btn-primary" onclick="handleSolve()">✨ Solve Puzzle</button>
     <button class="btn btn-secondary" onclick="clearBoard()">Clear Grid</button>
 
-    <p class="tip">💡 Keep all 4 outer borders of the Sudoku grid inside the frame. Tap any cell to fix a digit if needed.</p>
+    <p class="tip">💡 Ensure all 4 outer corners of the Sudoku square are inside the photo. Amber digits had lower AI confidence—tap to edit if needed.</p>
 </div>
 
 <img id="hiddenImg" style="display:none;" />
@@ -97,7 +102,7 @@
             input.className = 'cell';
             input.addEventListener('input', (e) => {
                 e.target.value = e.target.value.replace(/[^1-9]/g, '');
-                e.target.classList.remove('solved');
+                e.target.classList.remove('solved', 'low-conf');
             });
             boardElement.appendChild(input);
             cells.push(input);
@@ -116,7 +121,7 @@
             return;
         }
         clearBoard(true);
-        statusElement.innerText = "🔍 Detecting Sudoku grid & straightening perspective...";
+        statusElement.innerText = "🔍 Locating 9×9 grid corners...";
         const reader = new FileReader();
         reader.onload = (ev) => {
             hiddenImg.onload = () => processWithOpenCV();
@@ -142,6 +147,10 @@
         cv.GaussianBlur(gray, blurred, new cv.Size(7, 7), 0);
         cv.adaptiveThreshold(blurred, thresh, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 19, 5);
 
+        // Close small gaps in outer grid lines
+        let closeKernel = cv.Mat.ones(3, 3, cv.CV_8U);
+        cv.morphologyEx(thresh, thresh, cv.MORPH_CLOSE, closeKernel);
+
         let contours = new cv.MatVector();
         let hierarchy = new cv.Mat();
         cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
@@ -152,10 +161,10 @@
         for (let i = 0; i < contours.size(); ++i) {
             let cnt = contours.get(i);
             let area = cv.contourArea(cnt);
-            if (area > (src.cols * src.rows * 0.1)) {
+            if (area > (src.cols * src.rows * 0.08)) {
                 let peri = cv.arcLength(cnt, true);
                 let approx = new cv.Mat();
-                cv.approxPolyDP(cnt, approx, 0.02 * peri, true);
+                cv.approxPolyDP(cnt, approx, 0.025 * peri, true);
                 if (approx.rows === 4 && area > maxArea) {
                     if (bestApprox) bestApprox.delete();
                     bestApprox = approx;
@@ -193,119 +202,138 @@
         cv.imshow('warpedCanvas', warpedGray);
         previewBox.style.display = 'block';
 
-        await readGridViaRowStrips(warpedGray, warpSize);
+        await extractAndRecognizeCells(warpedGray, warpSize);
 
         src.delete(); gray.delete(); blurred.delete(); thresh.delete();
-        contours.delete(); hierarchy.delete(); warpedGray.delete();
+        closeKernel.delete(); contours.delete(); hierarchy.delete(); warpedGray.delete();
     }
 
-    async function readGridViaRowStrips(warpedGray, warpSize) {
+    async function extractAndRecognizeCells(warpedGray, warpSize) {
         try {
             const worker = await Tesseract.createWorker('eng');
             await worker.setParameters({
                 tessedit_char_whitelist: '123456789',
-                tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
+                tessedit_pageseg_mode: Tesseract.PSM.SINGLE_CHAR,
             });
 
             const cellDim = warpSize / 9; // 100px
-            const pad = 11; // Strip border lines
-            const slotWidth = 140;
-            const stripHeight = 140;
+            const borderTrim = 7; // Trim outer grid stroke
+            const cleanCanvas = document.createElement('canvas');
+            cleanCanvas.width = 96;
+            cleanCanvas.height = 96;
+            const cleanCtx = cleanCanvas.getContext('2d');
 
-            const stripCanvas = document.createElement('canvas');
-            stripCanvas.width = slotWidth * 9;
-            stripCanvas.height = stripHeight;
-            const stripCtx = stripCanvas.getContext('2d');
+            let detectedCount = 0;
 
             for (let r = 0; r < 9; r++) {
-                statusElement.innerText = `🔍 Reading row ${r + 1} of 9...`;
-                stripCtx.fillStyle = '#FFFFFF';
-                stripCtx.fillRect(0, 0, stripCanvas.width, stripCanvas.height);
-
-                let activeCols = [];
-
+                statusElement.innerText = `🔍 Scanning row ${r + 1} of 9...`;
                 for (let c = 0; c < 9; c++) {
-                    let rect = new cv.Rect(c * cellDim + pad, r * cellDim + pad, cellDim - pad * 2, cellDim - pad * 2);
+                    let rect = new cv.Rect(
+                        c * cellDim + borderTrim,
+                        r * cellDim + borderTrim,
+                        cellDim - borderTrim * 2,
+                        cellDim - borderTrim * 2
+                    );
                     let cellGray = warpedGray.roi(rect);
 
-                    // Per-cell Otsu binarization handles localized shadows cleanly
-                    let cellBin = new cv.Mat();
-                    cv.threshold(cellGray, cellBin, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU);
-
-                    // Check contrast span so blank white/gray cells don't produce Otsu noise
+                    // Skip low-contrast empty cells immediately
                     let minMax = cv.minMaxLoc(cellGray);
-                    if ((minMax.maxVal - minMax.minVal) < 45) {
-                        cellGray.delete(); cellBin.delete();
+                    if ((minMax.maxVal - minMax.minVal) < 40) {
+                        cellGray.delete();
                         continue;
                     }
 
-                    // Find largest centered digit contour
-                    let cnts = new cv.MatVector();
-                    let hier = new cv.Mat();
-                    cv.findContours(cellBin, cnts, hier, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+                    // Adaptive threshold per cell to handle uneven lighting
+                    let cellBin = new cv.Mat();
+                    cv.adaptiveThreshold(cellGray, cellBin, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 21, 9);
 
-                    let bestRect = null;
+                    // Connected Components: keep only blobs that do NOT touch the outer 6px edge
+                    let labels = new cv.Mat();
+                    let stats = new cv.Mat();
+                    let centroids = new cv.Mat();
+                    let numLabels = cv.connectedComponentsWithStats(cellBin, labels, stats, centroids);
+
+                    const w = cellBin.cols;
+                    const h = cellBin.rows;
+                    const edgeMargin = 5;
+
+                    let bestLabel = -1;
                     let bestArea = 0;
-                    const innerSize = cellDim - pad * 2; // 78px
 
-                    for (let i = 0; i < cnts.size(); i++) {
-                        let b = cv.boundingRect(cnts.get(i));
-                        let area = b.width * b.height;
-                        let centerX = b.x + b.width / 2;
-                        let centerY = b.y + b.height / 2;
-                        let isCentered = centerX > 14 && centerX < (innerSize - 14) && centerY > 14 && centerY < (innerSize - 14);
+                    for (let lbl = 1; lbl < numLabels; lbl++) {
+                        let left = stats.intAt(lbl, cv.CC_STAT_LEFT);
+                        let top = stats.intAt(lbl, cv.CC_STAT_TOP);
+                        let width = stats.intAt(lbl, cv.CC_STAT_WIDTH);
+                        let height = stats.intAt(lbl, cv.CC_STAT_HEIGHT);
+                        let area = stats.intAt(lbl, cv.CC_STAT_AREA);
 
-                        if (isCentered && b.height >= 22 && b.height <= 64 && b.width >= 5 && b.width <= 56 && area > bestArea) {
-                            bestArea = area;
-                            bestRect = b;
-                        }
-                    }
+                        let touchesBorder = (left <= edgeMargin) || (top <= edgeMargin) ||
+                                            (left + width >= w - edgeMargin) || (top + height >= h - edgeMargin);
 
-                    if (bestRect) {
-                        activeCols.push(c);
-                        let digitMat = cellBin.roi(bestRect);
-
-                        // Preserve aspect ratio cleanly (prevents thin '1' from stretching into '7' or '4')
-                        let scale = 68 / bestRect.height;
-                        let newW = Math.max(6, Math.round(bestRect.width * scale));
-                        let newH = 68;
-                        let resized = new cv.Mat();
-                        cv.resize(digitMat, resized, new cv.Size(newW, newH), 0, 0, cv.INTER_AREA);
-                        cv.bitwise_not(resized, resized);
-
-                        let tempCanvas = document.createElement('canvas');
-                        cv.imshow(tempCanvas, resized);
-
-                        let drawX = c * slotWidth + Math.floor((slotWidth - newW) / 2);
-                        let drawY = Math.floor((stripHeight - newH) / 2);
-                        stripCtx.drawImage(tempCanvas, drawX, drawY);
-
-                        digitMat.delete(); resized.delete();
-                    }
-
-                    cellGray.delete(); cellBin.delete(); cnts.delete(); hier.delete();
-                }
-
-                if (activeCols.length === 0) continue;
-
-                // Read entire row at once and map each detected symbol back to its exact column slot
-                const { data } = await worker.recognize(stripCanvas);
-                if (data.symbols && data.symbols.length > 0) {
-                    for (const sym of data.symbols) {
-                        const ch = sym.text.trim().replace(/[^1-9]/g, '');
-                        if (ch.length === 1) {
-                            const midX = (sym.bbox.x0 + sym.bbox.x1) / 2;
-                            const colIdx = Math.floor(midX / slotWidth);
-                            if (colIdx >= 0 && colIdx < 9 && activeCols.includes(colIdx)) {
-                                cells[r * 9 + colIdx].value = ch;
+                        // Valid digit size check (accepts off-center digits too!)
+                        if (!touchesBorder && height >= 20 && height <= 74 && width >= 4 && width <= 66 && area >= 45) {
+                            if (area > bestArea) {
+                                bestArea = area;
+                                bestLabel = lbl;
                             }
                         }
                     }
+
+                    if (bestLabel !== -1) {
+                        let bLeft = stats.intAt(bestLabel, cv.CC_STAT_LEFT);
+                        let bTop = stats.intAt(bestLabel, cv.CC_STAT_TOP);
+                        let bWidth = stats.intAt(bestLabel, cv.CC_STAT_WIDTH);
+                        let bHeight = stats.intAt(bestLabel, cv.CC_STAT_HEIGHT);
+
+                        // Build a clean mask containing ONLY the winning digit component
+                        let cleanDigit = cv.Mat.zeros(bHeight, bWidth, cv.CV_8U);
+                        for (let y = 0; y < bHeight; y++) {
+                            for (let x = 0; x < bWidth; x++) {
+                                if (labels.intAt(bTop + y, bLeft + x) === bestLabel) {
+                                    cleanDigit.ucharPtr(y, x)[0] = 255;
+                                }
+                            }
+                        }
+
+                        // Slight dilation so thin strokes (like 1 or 7) stay solid
+                        let k = cv.Mat.ones(2, 2, cv.CV_8U);
+                        cv.dilate(cleanDigit, cleanDigit, k);
+
+                        // Resize preserving true aspect ratio to 48px tall, centered in 96x96 white canvas
+                        let scale = 48 / bHeight;
+                        let newW = Math.max(6, Math.round(bWidth * scale));
+                        let newH = 48;
+                        let resized = new cv.Mat();
+                        cv.resize(cleanDigit, resized, new cv.Size(newW, newH), 0, 0, cv.INTER_AREA);
+                        cv.bitwise_not(resized, resized);
+
+                        cleanCtx.fillStyle = '#FFFFFF';
+                        cleanCtx.fillRect(0, 0, 96, 96);
+
+                        let tempCanvas = document.createElement('canvas');
+                        cv.imshow(tempCanvas, resized);
+                        cleanCtx.drawImage(tempCanvas, Math.floor((96 - newW) / 2), Math.floor((96 - newH) / 2));
+
+                        const { data } = await worker.recognize(cleanCanvas);
+                        const ch = data.text.trim().replace(/[^1-9]/g, '');
+                        if (ch.length >= 1) {
+                            const cellInput = cells[r * 9 + c];
+                            cellInput.value = ch[0];
+                            detectedCount++;
+                            if (data.confidence < 75) {
+                                cellInput.classList.add('low-conf');
+                            }
+                        }
+
+                        cleanDigit.delete(); k.delete(); resized.delete();
+                    }
+
+                    cellGray.delete(); cellBin.delete(); labels.delete(); stats.delete(); centroids.delete();
                 }
             }
 
             await worker.terminate();
-            statusElement.innerText = "✅ Scan complete! Review any digit if needed & click Solve.";
+            statusElement.innerText = `✅ Found ${detectedCount} numbers! Check any amber cells & click Solve.`;
         } catch (err) {
             console.error(err);
             statusElement.innerText = "❌ OCR Error. Please retry.";
@@ -326,18 +354,17 @@
             grid.push(row);
         }
 
-        // Prevent solving an empty or cleared board
         if (filledCount === 0) {
-            statusElement.innerText = "⚠️ The grid is empty! Upload a photo or enter numbers first.";
+            statusElement.innerText = "⚠️ Grid is empty! Upload a photo or enter numbers first.";
             return;
         }
         if (filledCount < 10) {
-            statusElement.innerText = `⚠️ Only ${filledCount} numbers entered. Add more clues before solving.`;
+            statusElement.innerText = `⚠️ Only ${filledCount} numbers present. Add more clues before solving.`;
             return;
         }
 
         if (!isValidInitialBoard(grid)) {
-            statusElement.innerText = "⚠️ Invalid puzzle! Duplicate numbers detected in row, column, or box.";
+            statusElement.innerText = "⚠️ Conflict detected! Duplicate number in a row, column, or box (check amber cells).";
             return;
         }
 
@@ -353,7 +380,7 @@
             }
             statusElement.innerText = "🎉 Sudoku Solved!";
         } else {
-            statusElement.innerText = "❌ No solution exists. Check if a scanned digit was misread.";
+            statusElement.innerText = "❌ No valid solution found. Check if a scanned digit was misread.";
         }
     }
 
@@ -399,7 +426,7 @@
     function clearBoard(silent = false) {
         cells.forEach(cell => {
             cell.value = '';
-            cell.classList.remove('solved');
+            cell.classList.remove('solved', 'low-conf');
         });
         previewBox.style.display = 'none';
         document.getElementById('cameraInput').value = '';
